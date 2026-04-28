@@ -1,0 +1,103 @@
+// --- 핵심 설정 ---
+const byte IR_PIN = 2;
+const float RADIUS_CM = 13.75;   // Flight Mill 회전 반경
+const float CIRCUMFERENCE = 2.0 * PI * RADIUS_CM; 
+const unsigned long DEBOUNCE_DELAY = 30; // 센서 감도에 따라 조절
+
+// --- 데이터 상태 변수 ---
+volatile bool newDataReady = false;
+volatile unsigned long isrTriggerTime = 0;
+bool isRecording = false;
+
+unsigned long startTime = 0;
+unsigned long lastTriggerTime = 0;
+unsigned int rotationCount = 0;
+float maxSpeed = 0.0;
+float totalDistance = 0.0;
+
+void setup() {
+  // 보드레이트를 9600으로 하향 조정 (안정성 우선)
+  Serial.begin(9600); 
+  pinMode(IR_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(IR_PIN), sensorISR, FALLING);
+  
+  while (!Serial); // 시리얼 연결 대기
+  delay(500);
+  Serial.println("\n[System] Flight Mill Ready.");
+  Serial.println("[System] 시작하려면 's', 종료하려면 'e'를 입력하세요.");
+}
+
+void loop() {
+  // 1. 명령어 처리 (줄바꿈 문자 등 노이즈 제거)
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim(); // 공백 제거
+
+    if (input.equals("s") && !isRecording) {
+      startRecording();
+    } 
+    else if (input.equals("e") && isRecording) {
+      stopRecording();
+    }
+  }
+
+  // 2. 실시간 데이터 로깅 (두 번째 데이터)
+  if (isRecording && newDataReady) {
+    newDataReady = false;
+    unsigned long currentTime = isrTriggerTime;
+    unsigned long interval = currentTime - lastTriggerTime;
+
+    if (lastTriggerTime > 0 && interval > DEBOUNCE_DELAY) {
+      rotationCount++;
+      totalDistance += CIRCUMFERENCE;
+      float currentSpeed = CIRCUMFERENCE / (interval / 1000.0);
+      if (currentSpeed > maxSpeed) maxSpeed = currentSpeed;
+
+      // 두 번째 데이터: 파이썬 판다스(Pandas)에서 바로 읽을 수 있는 CSV 포맷
+      // 앞뒤에 [LOG] 태그를 제거하여 순수 데이터만 출력합니다.
+      Serial.print(rotationCount);   Serial.print(",");
+      Serial.print(interval);        Serial.print(",");
+      Serial.print(currentTime - startTime); Serial.print(",");
+      Serial.println(currentSpeed);
+    }
+    lastTriggerTime = currentTime;
+  }
+}
+
+void sensorISR() {
+  if (isRecording) {
+    isrTriggerTime = millis();
+    newDataReady = true;
+  }
+}
+
+void startRecording() {
+  rotationCount = 0;
+  maxSpeed = 0.0;
+  totalDistance = 0.0;
+  lastTriggerTime = 0;
+  isRecording = true;
+  startTime = millis();
+  
+  Serial.println("\n측정을 시작합니다!");
+  Serial.println("----------------------------------------");
+}
+
+void stopRecording() {
+  isRecording = false;
+  unsigned long duration = millis() - startTime;
+  float totalTimeSec = duration / 1000.0;
+  float averageSpeed = (totalTimeSec > 0) ? (totalDistance / totalTimeSec) : 0.0;
+
+  Serial.println("----------------------------------------");
+  Serial.println("측정을 종료합니다!");
+  
+  // 첫 번째 데이터: 총괄 요약 정보 (노트북 화면 출력)
+  Serial.println("\n[최종 요약 데이터]");
+  Serial.print("1. 총 회전 횟수: "); Serial.print(rotationCount); Serial.println(" 회");
+  Serial.print("2. 총 회전 시간: "); Serial.print(totalTimeSec, 2); Serial.println(" 초");
+  Serial.print("3. 평균 회전 속도: "); Serial.print(averageSpeed, 2); Serial.println(" cm/s");
+  Serial.print("4. 최고 회전 속도: "); Serial.print(maxSpeed, 2); Serial.println(" cm/s");
+  Serial.println("========================================\n");
+}
+
