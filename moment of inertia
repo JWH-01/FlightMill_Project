@@ -1,0 +1,10 @@
+"
+플라이트 밀에서는 곤충이 비행을 정지하더라도 회전하는 관성에 의해 암의 회전이 지속되고 이 회전 수 또한 데이터에 측정된다.
+At flight mill even though insect stops the flight the arm of flight mill still rotates because of the moment of inertia and this rotation is also recorded as experiment data.
+곤충이 비행을 멈춘다면 마찰력이나 공기 저항과 같은 힘을 제외하고 가해지는 외력은 없을 것이다.
+When insect stops flying there gonna be no external force except friction or air resistance.
+장치가 완전히 정지할 때까지 가속도는 음수이며 속도 구간별로 특정한 값을 크게 벗어나지 않을 것이다.
+Until device totally stops the accelaration is negative and doesn't deviate specific value.
+따라서 외력없이 회전하는 장치의 속도 구간별 가속도를 알면 곤충이 어느 시점부터 비행을 멈추었는지 알 수 있을것이다.
+So if we can know the acceleration of the speed interval it also can find when insect stops flight.
+"
